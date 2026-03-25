@@ -1,0 +1,15 @@
+aiohttp
+aiohttp_cors
+aiofiles
+python-dotenv
+prisma
+asyncpg
+pytest
+pytest-asyncio
+pytest-cov
+requests
+pysonar
+pydantic_settings
+https://github.com/Les-Chauffagistes/subscription-types/releases/download/v0.0.3/subscription_types-0.1.0-py3-none-any.whl
+PyJWT
+bcrypt
