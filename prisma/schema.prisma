@@ -9,33 +9,47 @@ generator client {
   recursive_type_depth = 5
 }
 
-model discord_users {                                             
-  id           String @id                                                                                                                               
-  discord_name String                                                                                                                                   
-  user_id      BigInt                                                                                                                                   
-  users        users  @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "fk dc_users.users")                                       
-}                                                                                                                                                       
-                                                                                                                                                        
-model ln_users {                                                                                                                                        
-  id      BigInt  @id(map: "users_pkey") @default(autoincrement())                                                                                      
-  ln_key  String?                                                                                                                                       
-  user_id BigInt?                                                                                                                                       
-  users   users?  @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_users_id_fk")                                        
-}                                                                                                                                                       
-                                                                                                                                                        
-model password_users {                                                                                                                                  
-  id       BigInt @id @default(autoincrement())                                                                                                         
-  username String @unique                                                                                                                               
-  password String                                                                                                                                       
-  user_id  BigInt                                                                                                                                       
-  users    users  @relation(fields: [user_id], references: [id], onDelete: Cascade)                                                                     
-}                                                                                                                                                       
-                                                                                                                                                        
-model users {                                                                                                                                           
-  id             BigInt           @id(map: "users_pkey1") @default(autoincrement())                                                                     
-  pseudo         String?                                                                                                                                
-  created_at     DateTime         @default(now()) @db.Date                                                                                                                                                                                                                           
-  discord_users  discord_users[]                                                                                                                        
-  ln_users       ln_users[]                                                                                                                             
-  password_users password_users[]                                                                                                                                                                                                                                              
-}     
+enum lnurl_auth_status {
+  pending
+  done
+}
+
+model discord_users {
+  id           String @id
+  discord_name String
+  user_id      BigInt
+  users        users  @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "fk dc_users.users")
+}
+
+model ln_users {
+  id          BigInt       @id(map: "users_pkey") @default(autoincrement())
+  ln_key      String?
+  user_id     BigInt?
+  users       users?       @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_users_id_fk")
+  lnurl_auths lnurl_auth[]
+}
+
+model password_users {
+  id       BigInt @id @default(autoincrement())
+  username String @unique
+  password String
+  user_id  BigInt
+  users    users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model users {
+  id             BigInt           @id(map: "users_pkey1") @default(autoincrement())
+  pseudo         String?
+  created_at     DateTime         @default(now()) @db.Date
+  discord_users  discord_users[]
+  ln_users       ln_users[]
+  password_users password_users[]
+}
+
+model lnurl_auth {
+  k1         String            @id
+  status     lnurl_auth_status @default(pending)
+  created_at DateTime?         @default(now()) @db.Timestamp(6)
+  user_id    BigInt?
+  lnUsers    ln_users?         @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_lnurl_auth_fk")
+}
