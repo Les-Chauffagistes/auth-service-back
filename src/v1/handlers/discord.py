@@ -1,22 +1,71 @@
-import jwt
+from uuid import uuid4
+from aiohttp.web import HTTPFound, json_response
 from aiohttp.web_request import Request
-from aiohttp.web import json_response, HTTPFound
 from prisma import Prisma
 
-from ..services.username_password.login import login_with_username_password
-from ..services.username_password.register import create_username_password_account
-from ..excpetions import UnkownUserExpcetion, UsernameAlreadyInUseException, WrongCredentialsException
-from ..models.register import RegisterPayload
-from ..jwt import create_access_token, decode_access_token
+from src.settings import settings
 from ..app import routes
-from init import app
+from ..jwt import create_access_token, create_refresh_token
+from ..services.discord.login import DiscordOAuthError, build_discord_authorize_url, decode_state, encode_state, handle_login
 
 
-@routes.get("/auth/discord")
+@routes.get("/auth/discord/login")
 async def discord_login(request: Request):
-    return HTTPFound("")
+    state = encode_state({
+        "redirect": request.query.get("redirect"),
+        "nonce": str(uuid4())
+    })
+    return HTTPFound(build_discord_authorize_url(state))
+
 
 @routes.get("/auth/discord/callback")
 async def discord_callback(request: Request):
-    raise NotImplemented
+    prisma: Prisma = request.app["prisma"]
+    code = request.query.get("code")
+    error = request.query.get("error")
+    state_str = request.query.get("state")
 
+
+    if error:
+        return json_response({"error": f"Discord OAuth error: {error}"}, status=400)
+
+    if not code:
+        return json_response({"error": "Missing authorization code"}, status=400)
+
+    if not state_str:
+        return json_response({"error": "Missing state"}, status=400)
+
+    try:
+        user = await handle_login(prisma, code)
+    except DiscordOAuthError as exc:
+        return json_response({"error": str(exc)}, status=401)
+
+    state = decode_state(state_str)
+    redirect: str | None = state.get("redirect")
+    if not redirect:
+        return json_response({"error": "Missing redirect"}, status=400)
+    
+    access_token = create_access_token(user.id, user.pseudo)
+    refresh_token = await create_refresh_token(prisma, user.id)
+    response = HTTPFound(redirect)
+
+    response.set_cookie(
+        "access_token",
+        access_token,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        domain=settings.domain_name,
+        path="/"
+    )
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        domain=settings.domain_name,
+        path="/"
+    )
+
+    return response

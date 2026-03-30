@@ -10,7 +10,7 @@ async def create_username_password_account(prisma: Prisma, username: str, passwo
 
     hashed = await hash_password(password)
 
-    user = await prisma.users.create(data={})
+    user = await prisma.users.create(data={"pseudo": username})
     await prisma.password_users.create(data={
         "username": username,
         "password": hashed,

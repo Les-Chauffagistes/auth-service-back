@@ -1,24 +1,19 @@
 import jwt
 from aiohttp.web_request import Request
-from aiohttp.web import json_response, HTTPFound
-from prisma import Prisma
+from aiohttp.web import json_response
+from src.settings import settings
 
-from ..services.username_password.login import login_with_username_password
-from ..services.username_password.register import create_username_password_account
-from ..excpetions import UnkownUserExpcetion, UsernameAlreadyInUseException, WrongCredentialsException
-from ..models.register import RegisterPayload
-from ..jwt import create_access_token, decode_access_token
+from ..jwt import create_access_token, decode_access_token, rotate_refresh_token
 from ..app import routes
-from init import app
 
 
 @routes.get("/auth/me")
 async def me(request: Request):
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = request.cookies.get("access_token")
+    
+    if not token:
         return json_response({"error": "Missing token"}, status=401)
-
-    token = auth_header.removeprefix("Bearer ")
+    
     try:
         payload = decode_access_token(token)
     except jwt.ExpiredSignatureError:
@@ -30,8 +25,53 @@ async def me(request: Request):
 
 @routes.post("/auth/refresh")
 async def refresh_token(request: Request):
-    raise NotImplemented
+    provided_refresh_token = request.cookies.get("refresh_token")
 
-@routes.post("/auth/logout")
-async def revoque_token(request: Request):
-    raise notimpl
+    if not provided_refresh_token:
+        try:
+            raw_payload = await request.json()
+        except ValueError:
+            raw_payload = {}
+        provided_refresh_token = raw_payload.get("refresh_token")
+
+    if not provided_refresh_token:
+        return json_response({"error": "Missing refresh token"}, status=401)
+
+    prisma = request.app["prisma"]
+
+    try:
+        user, new_refresh_token = await rotate_refresh_token(prisma, provided_refresh_token)
+    except jwt.ExpiredSignatureError:
+        return json_response({"error": "Refresh token expired"}, status=401)
+    except jwt.InvalidTokenError:
+        return json_response({"error": "Invalid refresh token"}, status=401)
+
+    access_token = create_access_token(user.id, user.pseudo)
+    response = json_response(
+        {
+            "access_token": access_token,
+            "refresh_token": new_refresh_token,
+        }
+    )
+
+    if request.cookies.get("refresh_token"):
+        response.set_cookie(
+            "refresh_token",
+            new_refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            domain=settings.domain_name,
+            path="/",
+        )
+        response.set_cookie(
+            "access_token",
+            access_token,
+            httponly=True,
+            secure=True,
+            samesite="Lax",
+            domain=settings.domain_name,
+            path="/",
+        )
+
+    return response

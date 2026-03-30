@@ -44,6 +44,7 @@ model users {
   discord_users  discord_users[]
   ln_users       ln_users[]
   password_users password_users[]
+  refresh_tokens refresh_tokens[]
 }
 
 model lnurl_auth {
@@ -52,4 +53,14 @@ model lnurl_auth {
   created_at DateTime?         @default(now()) @db.Timestamp(6)
   user_id    BigInt?
   lnUsers    ln_users?         @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_lnurl_auth_fk")
+}
+
+model refresh_tokens {
+  id         BigInt    @id @default(autoincrement())
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  revoked_at DateTime? @db.Timestamp(6)
+  user_id    BigInt
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
