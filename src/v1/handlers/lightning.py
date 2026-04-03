@@ -1,7 +1,7 @@
-from binascii import Error as BinasciiError
-
 from aiohttp.web_request import Request
 from aiohttp.web import json_response
+from prisma import Prisma
+from prisma.enums import lnurl_auth_status
 
 from ..services.lightning.login import authenticate_with_lightning, create_challenge, verify_signature
 from ..app import routes
@@ -14,7 +14,7 @@ async def get_challenge(request: Request):
 
 @routes.get("/auth/lightning/verify")
 async def verify_challenge(request: Request):
-    prisma = request.app["prisma"]
+    prisma: Prisma = request.app["prisma"]
     k1 = request.query.get("k1", "")
     sig = request.query.get("sig", "")
     key = request.query.get("key", "")
@@ -26,12 +26,12 @@ async def verify_challenge(request: Request):
     if challenge is None:
         return json_response({"status": "ERROR", "reason": "unknown k1"}, status=400)
 
-    if challenge.status != "pending":
+    if challenge.status != lnurl_auth_status.pending:
         return json_response({"status": "ERROR", "reason": "k1 already used"}, status=409)
 
     try:
         is_valid = verify_signature(k1, sig, key)
-    except (BinasciiError, ValueError):
+    except ValueError:
         return json_response({"status": "ERROR", "reason": "invalid hex payload"}, status=400)
     except RuntimeError as exc:
         return json_response({"status": "ERROR", "reason": str(exc)}, status=500)
@@ -39,10 +39,9 @@ async def verify_challenge(request: Request):
     if not is_valid:
         return json_response({"status": "ERROR", "reason": "invalid signature"}, status=401)
 
-    ln_account = await authenticate_with_lightning(prisma, key)
     await prisma.lnurl_auth.update(
         where={"k1": k1},
-        data={"status": "done", "user_id": ln_account.id},
+        data={"status": lnurl_auth_status.done},
     )
 
     return json_response({"status": "OK"})

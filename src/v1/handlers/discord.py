@@ -4,6 +4,7 @@ from aiohttp.web_request import Request
 from prisma import Prisma
 
 from src.settings import settings
+from ..cookie import set_cookie_and_redirect
 from ..app import routes
 from ..jwt import create_access_token, create_refresh_token
 from ..services.discord.login import DiscordOAuthError, build_discord_authorize_url, decode_state, encode_state, handle_login
@@ -47,25 +48,6 @@ async def discord_callback(request: Request):
     
     access_token = create_access_token(user.id, user.pseudo)
     refresh_token = await create_refresh_token(prisma, user.id)
-    response = HTTPFound(redirect)
-
-    response.set_cookie(
-        "access_token",
-        access_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        domain=settings.domain_name,
-        path="/"
-    )
-    response.set_cookie(
-        "refresh_token",
-        refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        domain=settings.domain_name,
-        path="/"
-    )
+    response = set_cookie_and_redirect(redirect, access_token, refresh_token)
 
     return response

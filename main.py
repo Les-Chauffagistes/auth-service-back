@@ -1,5 +1,4 @@
 from init import routes, app, log
-from src.cors import cors
 from src.settings import settings
 from aiohttp import web
 from asyncio import new_event_loop, set_event_loop, Future
@@ -25,9 +24,9 @@ if __name__ == "__main__":
     app.add_routes(routes)
     app.add_routes(v1_routes)
     paths = []
-    for route in app.router.routes():
-        log.info("added cors on", route.method, route.resource.canonical)
-        cors.add(route)
+    # for route in app.router.routes():
+    #     log.info("added cors on", route.method, route.resource.canonical)
+    #     cors.add(route)
 
     loop = new_event_loop()
     set_event_loop(loop)

@@ -2,9 +2,11 @@ import jwt
 from aiohttp.web_request import Request
 from aiohttp.web import json_response
 from src.settings import settings
+from ..cookie import delete_cookies
 
 from ..jwt import create_access_token, decode_access_token, rotate_refresh_token
 from ..app import routes
+from init import app
 
 
 @routes.get("/auth/me")
@@ -74,4 +76,9 @@ async def refresh_token(request: Request):
             path="/",
         )
 
+    return response
+
+@routes.delete("/auth/logout")
+async def logout(_: Request):
+    response = delete_cookies()
     return response
