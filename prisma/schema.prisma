@@ -39,7 +39,7 @@ model password_users {
 
 model users {
   id             BigInt           @id(map: "users_pkey1") @default(autoincrement())
-  pseudo         String?
+  pseudo         String
   created_at     DateTime         @default(now()) @db.Date
   discord_users  discord_users[]
   ln_users       ln_users[]
@@ -52,6 +52,7 @@ model lnurl_auth {
   status     lnurl_auth_status @default(pending)
   created_at DateTime?         @default(now()) @db.Timestamp(6)
   user_id    BigInt?
+  ln_key     String?
   lnUsers    ln_users?         @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_lnurl_auth_fk")
 }
 

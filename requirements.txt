@@ -10,7 +10,7 @@ pytest-cov
 requests
 pysonar
 pydantic_settings
-https://github.com/Les-Chauffagistes/subscription-types/releases/download/v0.0.3/subscription_types-0.1.0-py3-none-any.whl
+https://github.com/Les-Chauffagistes/authentication-types/releases/download/v0.0.6/authentication_types-0.1.0-py3-none-any.whl
 PyJWT
 bcrypt
 bech32

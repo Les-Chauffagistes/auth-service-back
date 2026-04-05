@@ -1,4 +1,4 @@
-from aiohttp.web_exceptions import HTTPFound
+from aiohttp.web_exceptions import HTTPFound, HTTPOk
 from aiohttp.web_request import Request
 from aiohttp.web import json_response
 from prisma import Prisma
@@ -17,7 +17,7 @@ async def _authenticate(prisma: Prisma, raw_payload: dict):
     user = await login_with_username_password(prisma, payload.username, payload.password)
     access_token = create_access_token(user.id, user.pseudo)
     refresh_token = await create_refresh_token(prisma, user.id)
-    response = set_cookie_and_redirect(None, access_token, refresh_token)
+    response = set_cookie_and_redirect(HTTPOk(), access_token, refresh_token)
     return response
 
 
@@ -26,7 +26,7 @@ async def _register(prisma: Prisma, raw_payload: dict):
     user = await create_username_password_account(prisma, payload.username, payload.password)
     access_token = create_access_token(user.id, user.pseudo)
     refresh_token = await create_refresh_token(prisma, user.id)
-    response = set_cookie_and_redirect(None, access_token, refresh_token)
+    response = set_cookie_and_redirect(HTTPOk(), access_token, refresh_token)
     return response
 
 

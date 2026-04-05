@@ -48,6 +48,6 @@ async def discord_callback(request: Request):
     
     access_token = create_access_token(user.id, user.pseudo)
     refresh_token = await create_refresh_token(prisma, user.id)
-    response = set_cookie_and_redirect(redirect, access_token, refresh_token)
+    response = set_cookie_and_redirect(HTTPFound(redirect), access_token, refresh_token)
 
     return response

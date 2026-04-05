@@ -106,6 +106,7 @@ async def handle_login(db: Prisma, code: str):
             data={"discord_name": discord_name},
             include={"users": True},
         )
+        assert discord_account is not None
 
     assert discord_account.users is not None
     return discord_account.users

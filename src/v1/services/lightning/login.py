@@ -1,7 +1,11 @@
 from os import urandom
+from typing import Literal, Union
 from prisma import Prisma
+from prisma.models import users
 from src.settings import settings
 from .lnurl_codec import encode_lnurl
+from authentication_types.models import LNChallenge
+from init import log
 
 
 async def create_challenge(db: Prisma):
@@ -9,9 +13,13 @@ async def create_challenge(db: Prisma):
     await db.lnurl_auth.create(data={"k1": k1})
 
     callback_url = f"{settings.lightning_callback_url}?k1={k1}&tag=login"
+    log.debug(callback_url)
     lnurl = encode_lnurl(callback_url)
 
-    return {"lnurl": lnurl, "k1": k1}
+    return LNChallenge(
+        lnurl = lnurl,
+        k1 = k1
+    ).model_dump()
 
 
 def verify_signature(k1: str, sig: str, key: str) -> bool:
@@ -47,18 +55,16 @@ def verify_signature(k1: str, sig: str, key: str) -> bool:
         return False
 
 
-async def authenticate_with_lightning(db: Prisma, key: str):
+async def authenticate_with_lightning(
+    db: Prisma, key: str
+) -> Union[tuple[Literal["login"], users], tuple[Literal["onboarding"], str]]:
     ln_account = await db.ln_users.find_first(
         where={"ln_key": key},
         include={"users": True},
     )
 
     if ln_account is None:
-        user = await db.users.create(data={})
-        ln_account = await db.ln_users.create(
-            data={"ln_key": key, "user_id": user.id},
-            include={"users": True},
-        )
+        return ("onboarding", key)
 
     assert ln_account.users is not None
-    return ln_account
+    return ("login", ln_account.users)

@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv(".env", override=True)
+
 from init import routes, app, log
 from src.settings import settings
 from aiohttp import web

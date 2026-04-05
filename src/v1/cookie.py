@@ -1,7 +1,4 @@
-from http.client import HTTPResponse
-
-from aiohttp.web import HTTPFound
-from aiohttp.web_exceptions import HTTPOk
+from aiohttp.web import Response, HTTPOk
 from src.settings import settings
 from init import log
 
@@ -10,13 +7,9 @@ REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
 DOMAIN_NAME = settings.domain_name
 
 
-def set_cookie_and_redirect(redirect: str | None, access_token: str, refresh_token: str):
-    """Set cookies and redirect to the specified URL"""
-    log.debug("redirect", redirect)
-    if redirect:
-        response = HTTPFound(redirect)
-    else:
-        response = HTTPOk()
+def set_cookie_and_redirect(response: Response, access_token: str, refresh_token: str):
+    """Set cookies and return the response"""
+
     response.set_cookie(
         ACCESS_TOKEN_COOKIE_NAME,
         access_token,

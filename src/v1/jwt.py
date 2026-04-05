@@ -9,6 +9,7 @@ from src.settings import settings
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
+ONBOARDING_TOKEN_EXPIRE_MINUTES = 10
 
 
 def create_access_token(user_id: int, pseudo: str | None) -> str:
@@ -20,6 +21,23 @@ def create_access_token(user_id: int, pseudo: str | None) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+
+def create_onboarding_token(ln_key: str) -> str:
+    payload = {
+        "ln_key": ln_key,
+        "type": "onboarding",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=ONBOARDING_TOKEN_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+
+def decode_onboarding_token(token: str) -> dict:
+    payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    if payload.get("type") != "onboarding":
+        raise jwt.InvalidTokenError("Invalid token type")
+    return payload
 
 
 def decode_access_token(token: str) -> dict:
