@@ -14,7 +14,8 @@ async def cors_middleware(request: Request, handler: Callable[[Request], Awaitab
 
     if origin in [
         "https://app.swakraft.fr",
-        "https://auth.swakraft.fr"
+        "https://auth.swakraft.fr",
+        "https://contenders.swakraft.fr",
     ]:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"

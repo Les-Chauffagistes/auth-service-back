@@ -113,7 +113,7 @@ async def exchange(request: Request):
             ExchangeCodePayload(
                 status=Status.logged_in,
                 user=User(user_id=str(user.id), pseudo=user.pseudo),
-            ).model_dump()
+            ).model_dump(mode="json")
         ),
         access_token,
         refresh_token,
