@@ -33,4 +33,11 @@ EXPOSE ${SERVER_PORT:-8095}
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${SERVER_PORT:-8095}/health || exit 1
 
-CMD ["python", "main.py"]
+CMD ["sh", "-c", "\
+  export DB_PASSWORD=$(cat /run/secrets/db_password) && \
+  export DATABASE_URL=postgresql://auth:${DB_PASSWORD}@${DB_HOST:-auth-service_db}:5432/auth && \
+  export DISCORD_CLIENT_ID=$(cat /run/secrets/discord_client_id) && \
+  export DISCORD_CLIENT_SECRET=$(cat /run/secrets/discord_client_secret) && \
+  export JWT_SECRET=$(cat /run/secrets/jwt_secret) && \
+  until prisma migrate deploy; do echo 'DB pas prête, retry...'; sleep 2; done && \
+  python main.py"]
