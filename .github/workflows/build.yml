@@ -9,9 +9,10 @@ on:
  
 jobs:
   build-push:
-    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@develop
+    uses: les-chauffagistes/deploy/.github/workflows/build.yml@develop
     with:
-      service-name: coins-service
+      service-name: auth-service-back
     secrets:
-      ORG_PAT: ${{ secrets.ORG_PAT }}
+      REGISTRY_USER:     ${{ secrets.REGISTRY_USER }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
  
