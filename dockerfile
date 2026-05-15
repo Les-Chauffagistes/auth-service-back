@@ -18,7 +18,7 @@ FROM python:3.12-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl \
+    libpq5 curl libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
