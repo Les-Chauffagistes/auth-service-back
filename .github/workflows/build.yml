@@ -1,0 +1,17 @@
+name: CI
+ 
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*.*.*"]
+  pull_request:
+
+ 
+jobs:
+  build-push:
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@develop
+    with:
+      service-name: coins-service
+    secrets:
+      ORG_PAT: ${{ secrets.ORG_PAT }}
+ 

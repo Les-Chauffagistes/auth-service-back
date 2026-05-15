@@ -31,6 +31,6 @@ COPY . .
 EXPOSE ${SERVER_PORT:-8095}
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${SERVER_PORT:-8095}/v1/health || exit 1
+    CMD curl -f http://localhost:${SERVER_PORT:-8095}/health || exit 1
 
 CMD ["python", "main.py"]
