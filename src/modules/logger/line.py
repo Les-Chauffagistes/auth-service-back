@@ -13,13 +13,13 @@ class Line:
         self._log = log
     
     def _move_cursor_up(self, n):
-        print(f"\033[{n}A", end='')
+        print(f"\033[{n}A", end='', flush=True)
 
     def _move_cursor_down(self, n):
-        print(f"\033[{n}B", end='')
+        print(f"\033[{n}B", end='', flush=True)
     
     def _clear_line(self):
-        print("\033[K", end='')
+        print("\033[K", end='', flush=True)
     
     def add_text(self, *content):
         self._content += content
@@ -34,7 +34,7 @@ class Line:
         self._clear_line()
         message = ' '.join(map(str, self._content))
         text = f"\33[90m{self._timestamp}\033[1;{self._color_code};40m[{self._level}]{self._caller_info}\033[0;0m {message}"
-        print(text)
+        print(text, flush=True)
 
         # Mise à jour du buffer
         new_line_count = self._log.count_lines(text)

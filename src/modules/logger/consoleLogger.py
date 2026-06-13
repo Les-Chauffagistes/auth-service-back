@@ -46,7 +46,7 @@ class ConsoleLogger(AbstractLogger):
         self.curent_line += self.count_lines(text)
         line_count = self.count_lines(text)
         self._line_data.append((text, line_count))
-        print(text)
+        print(text, flush=True)
         index = len(self._line_data) -1  # index réel
 
         return Line(timestamp, color_code, level, caller_info, content, index, self)
