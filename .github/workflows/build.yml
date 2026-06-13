@@ -15,4 +15,4 @@ jobs:
     secrets:
       REGISTRY_USER:     ${{ secrets.REGISTRY_USER }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
- 
+      ORG_PAT:           ${{ secrets.ORG_PAT }}
