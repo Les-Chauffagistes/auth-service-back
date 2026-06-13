@@ -6,16 +6,15 @@ from typing import Awaitable, Callable
 @middleware
 async def cors_middleware(request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]) -> StreamResponse:
     if request.method == "OPTIONS":
-        response = Response()
+        response = Response(status=200)
     else:
         response = await handler(request)
 
     origin = request.headers.get("Origin")
 
     if origin in [
-        "https://app.swakraft.fr",
-        "https://auth.swakraft.fr",
-        "https://contenders.swakraft.fr",
+        "https://auth.staging.chauffagistes-btc.fr",
+        "https://auth.chauffagistes-btc.fr"
     ]:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
