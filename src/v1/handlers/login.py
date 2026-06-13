@@ -17,7 +17,7 @@ from ..services.lightning.exchange import consume_exchange_code
 from ..app import routes
 
 
-@routes.get("/auth/me")
+@routes.get("/me")
 async def me(request: Request):
     access_token = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)
 
@@ -36,7 +36,7 @@ async def me(request: Request):
     )
 
 
-@routes.post("/auth/refresh")
+@routes.post("/refresh")
 async def refresh_token(request: Request):
     provided_refresh_token = request.cookies.get("refresh_token")
 
@@ -72,13 +72,13 @@ async def refresh_token(request: Request):
     return response
 
 
-@routes.delete("/auth/logout")
+@routes.delete("/logout")
 async def logout(_: Request):
     response = delete_cookies()
     return response
 
 
-@routes.post("/auth/exchange")
+@routes.post("/exchange")
 async def exchange(request: Request):
     try:
         body: dict = await request.json()
@@ -119,7 +119,7 @@ async def exchange(request: Request):
         refresh_token,
     )
 
-@routes.post("/auth/lightning/complete")
+@routes.post("/lightning/complete")
 async def complete_lightning_onboarding(request: Request):
     try:
         body: dict = await request.json()

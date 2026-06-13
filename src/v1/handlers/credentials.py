@@ -30,7 +30,7 @@ async def _register(prisma: Prisma, raw_payload: dict):
     return response
 
 
-@routes.post("/auth/login-or-register")
+@routes.post("/login-or-register")
 async def login_or_register(request: Request):
     prisma: Prisma = request.app["prisma"]
     raw_payload = await request.json()

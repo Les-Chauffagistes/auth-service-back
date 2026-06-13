@@ -17,14 +17,14 @@ from ..app import routes
 _ws_registry: dict[str, web.WebSocketResponse] = {}
 
 
-@routes.get("/auth/lightning/challenge")
+@routes.get("/lightning/challenge")
 async def get_challenge(request: Request):
     prisma = request.app["prisma"]
     payload = await create_challenge(prisma)
     return json_response(payload)
 
 
-@routes.get("/auth/lightning/ws")
+@routes.get("/lightning/ws")
 async def lightning_ws(request: Request):
     k1 = request.query.get("k1", "")
     if not k1:
@@ -53,7 +53,7 @@ async def lightning_ws(request: Request):
     return ws
 
 
-@routes.get("/auth/lightning/verify")
+@routes.get("/lightning/verify")
 async def verify_challenge(request: Request):
     prisma: Prisma = request.app["prisma"]
     k1 = request.query.get("k1", "")

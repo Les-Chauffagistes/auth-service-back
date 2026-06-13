@@ -10,7 +10,7 @@ from ..jwt import create_access_token, create_refresh_token
 from ..services.discord.login import DiscordOAuthError, build_discord_authorize_url, decode_state, encode_state, handle_login
 
 
-@routes.get("/auth/discord/login")
+@routes.get("/discord/login")
 async def discord_login(request: Request):
     state = encode_state({
         "redirect": request.query.get("redirect"),
@@ -19,7 +19,7 @@ async def discord_login(request: Request):
     return HTTPFound(build_discord_authorize_url(state))
 
 
-@routes.get("/auth/discord/callback")
+@routes.get("/discord/callback")
 async def discord_callback(request: Request):
     prisma: Prisma = request.app["prisma"]
     code = request.query.get("code")
