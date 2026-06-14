@@ -7,7 +7,7 @@ from aiohttp.web import Application, RouteTableDef
 log = logger.Logger("output.log")
 
 app = Application(
-    middlewares=(error_handler,cors_middleware)
+    middlewares=(cors_middleware, error_handler)
 )
 
 app.on_startup.append(init_prisma) # enregistre prisma dans app["prisma"]
