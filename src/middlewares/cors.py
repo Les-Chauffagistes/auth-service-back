@@ -16,7 +16,9 @@ async def cors_middleware(request: Request, handler: Callable[[Request], Awaitab
         "https://auth.staging.chauffagistes-btc.fr",
         "https://auth.chauffagistes-btc.fr",
         "https://contenders.staging.chauffagistes-btc.fr",
-        "https://contenders.chauffagistes-btc.fr"
+        "https://contenders.chauffagistes-btc.fr",
+        "https://heatboard.chauffagistes-btc.fr",
+        "https://heatboard.staging.chauffagistes-btc.fr",
     ]:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
