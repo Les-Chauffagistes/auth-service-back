@@ -8,11 +8,16 @@ on:
 
  
 jobs:
+  test:
+    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@develop
+    with:
+      python-version: '3.12'
+    secrets: inherit
+
   build-push:
-    uses: les-chauffagistes/deploy/.github/workflows/build.yml@develop
+    if: github.event_name == 'push'
+    needs: test
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@develop
     with:
       service-name: auth-service-back
-    secrets:
-      REGISTRY_USER:     ${{ secrets.REGISTRY_USER }}
-      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-      ORG_PAT:           ${{ secrets.ORG_PAT }}
+    secrets: inherit
