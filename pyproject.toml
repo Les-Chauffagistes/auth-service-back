@@ -7,7 +7,7 @@ asyncio_default_test_loop_scope = "session"
 [tool.coverage.run]                                                                                                    
 source = ["src"]                                                                                                       
 omit = [                                                                                                               
-    "src/database/*",     # bootstrapping DB, nécessite infra réelle                                                 
+    "src/database/*",     # application database lifecycle wiring
     "src/settings.py",    # configuration pure                      
 ]                                                                                                                      
                                                                                                                         
