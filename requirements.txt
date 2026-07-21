@@ -1,0 +1,17 @@
+aiohttp
+aiohttp_cors
+aiofiles
+python-dotenv
+prisma
+asyncpg
+pytest
+pytest-asyncio
+pytest-cov
+requests
+pysonar
+pydantic_settings
+https://github.com/Les-Chauffagistes/authentication-types/releases/download/v0.0.6/authentication_types-0.1.0-py3-none-any.whl
+PyJWT
+bcrypt
+bech32
+ecdsa
