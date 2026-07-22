@@ -1,0 +1,16 @@
+services:
+  app:
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        until prisma migrate deploy; do
+          echo "DB pas prete, retry..."
+          sleep 2
+        done
+        exec python main.py
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-auth}
+    depends_on:
+      db:
+        condition: service_healthy
