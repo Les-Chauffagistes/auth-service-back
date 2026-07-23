@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-load_dotenv(".env", override=True)
+load_dotenv(".env")
 
 from init import routes, app, log
 from src.settings import settings
@@ -28,9 +28,6 @@ if __name__ == "__main__":
     app.add_routes(routes)
     app.add_routes(v1_routes)
     paths = []
-    # for route in app.router.routes():
-    #     log.info("added cors on", route.method, route.resource.canonical)
-    #     cors.add(route)
 
     loop = new_event_loop()
     set_event_loop(loop)

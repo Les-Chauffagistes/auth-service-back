@@ -3,19 +3,36 @@ from aiohttp.web import HTTPFound, json_response
 from aiohttp.web_request import Request
 from prisma import Prisma
 
-from src.settings import settings
+from ..auth import resolve_authenticated_user_id
 from ..cookie import set_cookie_and_redirect
 from ..app import routes
 from ..jwt import create_access_token, create_refresh_token
-from ..services.discord.login import DiscordOAuthError, build_discord_authorize_url, decode_state, encode_state, handle_login
-
-
+from ..services.discord.login import (
+    DiscordOAuthError,
+    DiscordProviderAlreadyLinkedError,
+    build_discord_authorize_url,
+    decode_state,
+    encode_state,
+    handle_link,
+    handle_login,
+)
 @routes.get("/discord/login")
 async def discord_login(request: Request):
-    state = encode_state({
+    flow = request.query.get("flow", "login")
+    if flow not in ("login", "link"):
+        return json_response({"error": "Invalid flow"}, status=400)
+
+    state_payload: dict[str, str | None] = {
         "redirect": request.query.get("redirect"),
-        "nonce": str(uuid4())
-    })
+        "nonce": str(uuid4()),
+        "flow": flow,
+    }
+    if flow == "link":
+        linked_user_id = resolve_authenticated_user_id(request)
+        if linked_user_id is None:
+            return json_response({"error": "Unauthorized"}, status=401)
+
+    state = encode_state({**state_payload})
     return HTTPFound(build_discord_authorize_url(state))
 
 
@@ -37,11 +54,26 @@ async def discord_callback(request: Request):
         return json_response({"error": "Missing state"}, status=400)
 
     try:
-        user = await handle_login(prisma, code)
+        state = decode_state(state_str)
+    except Exception:
+        return json_response({"error": "Invalid state"}, status=400)
+
+    flow: str = state.get("flow", "login")
+    if flow not in ("login", "link"):
+        return json_response({"error": "Invalid flow"}, status=400)
+    try:
+        if flow == "link":
+            linked_user_id = resolve_authenticated_user_id(request)
+            if linked_user_id is None:
+                return json_response({"error": "Unauthorized"}, status=401)
+            user = await handle_link(prisma, code, linked_user_id)
+        else:
+            user = await handle_login(prisma, code)
     except DiscordOAuthError as exc:
         return json_response({"error": str(exc)}, status=401)
+    except DiscordProviderAlreadyLinkedError as exc:
+        return json_response({"error": str(exc)}, status=409)
 
-    state = decode_state(state_str)
     redirect: str | None = state.get("redirect")
     if not redirect:
         return json_response({"error": "Missing redirect"}, status=400)

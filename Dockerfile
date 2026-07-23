@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --only-binary :all: --require-hashes -r requirements.txt
 
 COPY prisma ./prisma
 RUN prisma generate
@@ -15,10 +15,12 @@ RUN prisma generate
 
 FROM python:3.12-slim AS runtime
 
+RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -m appuser
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl libatomic1 \
+    curl libatomic1 libpq5  \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
@@ -26,12 +28,20 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
 COPY --from=builder /app/prisma ./prisma
 
-COPY . .
+COPY main.py init.py ./
+COPY src ./src
+
+RUN chown -R appuser:appuser /app \
+    && chmod o+rx /root \
+    && chmod -R o+rX /root/.cache/prisma-python
+
+ENV HOME=/root
+USER appuser
 
 EXPOSE ${SERVER_PORT:-8095}
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${SERVER_PORT:-8095}/health || exit 1
+    CMD curl -f http://localhost:"${SERVER_PORT:-8095}"/health || exit 1
 
 CMD ["sh", "-c", "\
   export DB_PASSWORD=$(cat /run/secrets/db_password) && \

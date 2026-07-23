@@ -5,7 +5,6 @@ services:
       - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     env_file:
       - .env
-      - .env.docker
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-auth}
     depends_on:

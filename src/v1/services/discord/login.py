@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 from aiohttp import ClientSession
 from prisma import Prisma
 
-from src.settings import settings
+from ....settings import settings
 
 DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
 DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
@@ -12,6 +12,10 @@ DISCORD_SCOPE = "identify"
 
 
 class DiscordOAuthError(Exception):
+    pass
+
+
+class DiscordProviderAlreadyLinkedError(Exception):
     pass
 
 import json
@@ -110,3 +114,38 @@ async def handle_login(db: Prisma, code: str):
 
     assert discord_account.users is not None
     return discord_account.users
+
+
+async def handle_link(db: Prisma, code: str, user_id: int):
+    discord_access_token = await _fetch_discord_token(code)
+    identity = await _fetch_discord_identity(discord_access_token)
+
+    discord_id = identity["id"]
+    discord_name = identity["username"]
+
+    user = await db.users.find_unique(where={"id": user_id})
+    if user is None:
+        raise DiscordOAuthError("User not found")
+
+    discord_account = await db.discord_users.find_unique(
+        where={"id": discord_id},
+        include={"users": True},
+    )
+
+    if discord_account is None:
+        await db.discord_users.create(
+            data={
+                "id": discord_id,
+                "discord_name": discord_name,
+                "user_id": user_id,
+            }
+        )
+    elif discord_account.user_id != user_id:
+        raise DiscordProviderAlreadyLinkedError("Discord account already linked to another user")
+    else:
+        await db.discord_users.update(
+            where={"id": discord_id},
+            data={"discord_name": discord_name},
+        )
+
+    return user

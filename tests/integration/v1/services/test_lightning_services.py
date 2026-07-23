@@ -1,6 +1,11 @@
 import pytest
 
-from src.v1.services.lightning.login import authenticate_with_lightning, create_challenge
+from src.v1.services.lightning.login import (
+    LightningProviderAlreadyLinkedError,
+    authenticate_with_lightning,
+    create_challenge,
+    link_lightning_provider,
+)
 
 
 @pytest.mark.asyncio
@@ -50,3 +55,25 @@ async def test_authenticate_with_lightning_does_not_duplicate_ln_account(prisma_
 
     ln_accounts = await prisma_tx.ln_users.find_many(where={"ln_key": "ln-pubkey-dup"})
     assert len(ln_accounts) == 1
+
+
+@pytest.mark.asyncio
+async def test_link_lightning_provider_attaches_new_key_to_existing_user(prisma_tx):
+    user = await prisma_tx.users.create(data={"pseudo": "ln-link-user"})
+
+    result = await link_lightning_provider(prisma_tx, user.id, "ln-link-key")
+
+    assert result.id == user.id
+    account = await prisma_tx.ln_users.find_first(where={"ln_key": "ln-link-key"})
+    assert account is not None
+    assert account.user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_link_lightning_provider_rejects_key_linked_to_other_user(prisma_tx):
+    user_a = await prisma_tx.users.create(data={"pseudo": "ln-a"})
+    user_b = await prisma_tx.users.create(data={"pseudo": "ln-b"})
+    await prisma_tx.ln_users.create(data={"ln_key": "ln-conflict-key", "user_id": user_a.id})
+
+    with pytest.raises(LightningProviderAlreadyLinkedError):
+        await link_lightning_provider(prisma_tx, user_b.id, "ln-conflict-key")

@@ -5,12 +5,14 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.v1.services.discord.login import (
+    DiscordProviderAlreadyLinkedError,
     DiscordOAuthError,
     _fetch_discord_identity,
     _fetch_discord_token,
     build_discord_authorize_url,
     decode_state,
     encode_state,
+    handle_link,
     handle_login,
 )
 
@@ -176,3 +178,51 @@ async def test_handle_login_updates_existing_discord_account(monkeypatch: pytest
         data={"discord_name": "alice-renamed"},
         include={"users": True},
     )
+
+
+@pytest.mark.asyncio
+async def test_handle_link_creates_discord_link_for_target_user(monkeypatch: pytest.MonkeyPatch):
+    user = SimpleNamespace(id=7, pseudo="target")
+    db = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        discord_users=SimpleNamespace(
+            find_unique=AsyncMock(return_value=None),
+            create=AsyncMock(),
+            update=AsyncMock(),
+        ),
+    )
+    monkeypatch.setattr("src.v1.services.discord.login._fetch_discord_token", AsyncMock(return_value="token-123"))
+    monkeypatch.setattr(
+        "src.v1.services.discord.login._fetch_discord_identity",
+        AsyncMock(return_value={"id": "discord-777", "username": "alice"}),
+    )
+
+    result = await handle_link(db, "oauth-code", user.id)
+
+    assert result is user
+    db.discord_users.create.assert_awaited_once_with(
+        data={"id": "discord-777", "discord_name": "alice", "user_id": 7}
+    )
+    db.discord_users.update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_link_raises_conflict_when_discord_is_already_linked_elsewhere(monkeypatch: pytest.MonkeyPatch):
+    user = SimpleNamespace(id=7, pseudo="target")
+    existing = SimpleNamespace(user_id=99)
+    db = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        discord_users=SimpleNamespace(
+            find_unique=AsyncMock(return_value=existing),
+            create=AsyncMock(),
+            update=AsyncMock(),
+        ),
+    )
+    monkeypatch.setattr("src.v1.services.discord.login._fetch_discord_token", AsyncMock(return_value="token-123"))
+    monkeypatch.setattr(
+        "src.v1.services.discord.login._fetch_discord_identity",
+        AsyncMock(return_value={"id": "discord-777", "username": "alice"}),
+    )
+
+    with pytest.raises(DiscordProviderAlreadyLinkedError):
+        await handle_link(db, "oauth-code", user.id)

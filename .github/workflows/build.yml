@@ -8,11 +8,18 @@ on:
 
  
 jobs:
+  test:
+    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
+    with:
+      python-version: '3.12'
+
   build-push:
-    uses: les-chauffagistes/deploy/.github/workflows/build.yml@develop
+    if: github.event_name == 'push'
+    needs: test
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
     with:
       service-name: auth-service-back
     secrets:
-      REGISTRY_USER:     ${{ secrets.REGISTRY_USER }}
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-      ORG_PAT:           ${{ secrets.ORG_PAT }}
+      ORG_PAT: ${{ secrets.ORG_PAT }}
