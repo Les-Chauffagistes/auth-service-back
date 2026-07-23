@@ -5,7 +5,11 @@ import pytest
 
 from src.v1.excpetions import UnkownUserExpcetion, UsernameAlreadyInUseException, WrongCredentialsException
 from src.v1.services.username_password.login import login_with_username_password
-from src.v1.services.username_password.register import create_username_password_account
+from src.v1.services.username_password.register import (
+    CredentialsProviderAlreadyLinkedError,
+    create_username_password_account,
+    link_username_password_account,
+)
 from src.v1.services.username_password.utils import check_account_exists, hash_password, verify_password
 
 
@@ -120,3 +124,50 @@ async def test_hash_password_and_verify_password_round_trip():
     assert isinstance(hashed, str)
     assert await verify_password("secret", hashed) is True
     assert await verify_password("wrong-secret", hashed) is False
+
+
+@pytest.mark.asyncio
+async def test_link_username_password_account_persists_credentials_for_existing_user(monkeypatch: pytest.MonkeyPatch):
+    user = SimpleNamespace(id=12, pseudo="alice")
+    prisma = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        password_users=SimpleNamespace(
+            find_first=AsyncMock(return_value=None),
+            create=AsyncMock(),
+        ),
+    )
+    monkeypatch.setattr(
+        "src.v1.services.username_password.register.check_account_exists",
+        AsyncMock(return_value=False),
+    )
+    monkeypatch.setattr(
+        "src.v1.services.username_password.register.hash_password",
+        AsyncMock(return_value="hashed-secret"),
+    )
+
+    result = await link_username_password_account(prisma, user.id, "alice-user", "secret")
+
+    assert result is user
+    prisma.password_users.create.assert_awaited_once_with(
+        data={"username": "alice-user", "password": "hashed-secret", "user_id": 12}
+    )
+
+
+@pytest.mark.asyncio
+async def test_link_username_password_account_raises_when_provider_already_linked(monkeypatch: pytest.MonkeyPatch):
+    user = SimpleNamespace(id=12, pseudo="alice")
+    existing = SimpleNamespace(id=1, user_id=12)
+    prisma = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        password_users=SimpleNamespace(
+            find_first=AsyncMock(return_value=existing),
+            create=AsyncMock(),
+        ),
+    )
+    monkeypatch.setattr(
+        "src.v1.services.username_password.register.check_account_exists",
+        AsyncMock(return_value=False),
+    )
+
+    with pytest.raises(CredentialsProviderAlreadyLinkedError):
+        await link_username_password_account(prisma, user.id, "alice-user", "secret")

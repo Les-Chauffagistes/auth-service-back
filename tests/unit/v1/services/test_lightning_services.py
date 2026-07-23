@@ -7,6 +7,7 @@ from src.settings import settings
 from src.v1.services.lightning.bech32_fallback import _convertbits, bech32_decode, bech32_encode
 from src.v1.services.lightning.lnurl_codec import decode_lnurl, encode_lnurl
 from src.v1.services.lightning.login import authenticate_with_lightning, create_challenge, verify_signature
+from src.v1.services.lightning.login import LightningProviderAlreadyLinkedError, link_lightning_provider
 
 
 @pytest.mark.asyncio
@@ -55,6 +56,33 @@ async def test_authenticate_with_lightning_returns_onboarding_tuple_for_unknown_
     assert data == "new-pubkey"
     db.users.create.assert_not_awaited()
     db.ln_users.create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_lightning_provider_creates_link_for_new_key():
+    user = SimpleNamespace(id=1, pseudo="hugo")
+    db = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        ln_users=SimpleNamespace(find_first=AsyncMock(return_value=None), create=AsyncMock()),
+    )
+
+    result = await link_lightning_provider(db, user.id, "new-pubkey")
+
+    assert result is user
+    db.ln_users.create.assert_awaited_once_with(data={"ln_key": "new-pubkey", "user_id": 1})
+
+
+@pytest.mark.asyncio
+async def test_link_lightning_provider_raises_when_key_is_linked_elsewhere():
+    user = SimpleNamespace(id=1, pseudo="hugo")
+    existing = SimpleNamespace(user_id=2)
+    db = SimpleNamespace(
+        users=SimpleNamespace(find_unique=AsyncMock(return_value=user)),
+        ln_users=SimpleNamespace(find_first=AsyncMock(return_value=existing), create=AsyncMock()),
+    )
+
+    with pytest.raises(LightningProviderAlreadyLinkedError):
+        await link_lightning_provider(db, user.id, "existing-pubkey")
 
 
 def test_verify_signature_raises_for_invalid_k1_length():

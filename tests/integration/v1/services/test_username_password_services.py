@@ -2,7 +2,11 @@ import pytest
 
 from src.v1.excpetions import UnkownUserExpcetion, UsernameAlreadyInUseException, WrongCredentialsException
 from src.v1.services.username_password.login import login_with_username_password
-from src.v1.services.username_password.register import create_username_password_account
+from src.v1.services.username_password.register import (
+    CredentialsProviderAlreadyLinkedError,
+    create_username_password_account,
+    link_username_password_account,
+)
 
 
 @pytest.mark.asyncio
@@ -50,3 +54,24 @@ async def test_login_with_username_password_raises_for_wrong_password(prisma_tx)
 async def test_login_with_username_password_raises_for_unknown_user(prisma_tx):
     with pytest.raises(UnkownUserExpcetion):
         await login_with_username_password(prisma_tx, "unknown-alice", "secret")
+
+
+@pytest.mark.asyncio
+async def test_link_username_password_account_links_credentials_to_existing_user(prisma_tx):
+    user = await prisma_tx.users.create(data={"pseudo": "existing-user"})
+
+    result = await link_username_password_account(prisma_tx, user.id, "linked-user", "secret")
+
+    assert result.id == user.id
+    credentials = await prisma_tx.password_users.find_unique(where={"username": "linked-user"})
+    assert credentials is not None
+    assert credentials.user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_link_username_password_account_rejects_second_credentials_link(prisma_tx):
+    user = await prisma_tx.users.create(data={"pseudo": "credential-link-user"})
+    await link_username_password_account(prisma_tx, user.id, "first-username", "secret")
+
+    with pytest.raises(CredentialsProviderAlreadyLinkedError):
+        await link_username_password_account(prisma_tx, user.id, "second-username", "secret")

@@ -23,7 +23,7 @@ model discord_users {
 
 model ln_users {
   id          BigInt       @id(map: "users_pkey") @default(autoincrement())
-  ln_key      String?
+  ln_key      String?      @unique
   user_id     BigInt?
   users       users?       @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "ln_users_users_id_fk")
   lnurl_auths lnurl_auth[]

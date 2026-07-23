@@ -8,6 +8,10 @@ from authentication_types.models import LNChallenge
 from init import log
 
 
+class LightningProviderAlreadyLinkedError(Exception):
+    pass
+
+
 async def create_challenge(db: Prisma):
     k1 = urandom(32).hex()
     await db.lnurl_auth.create(data={"k1": k1})
@@ -68,3 +72,19 @@ async def authenticate_with_lightning(
 
     assert ln_account.users is not None
     return ("login", ln_account.users)
+
+
+async def link_lightning_provider(db: Prisma, user_id: int, key: str):
+    user = await db.users.find_unique(where={"id": user_id})
+    if user is None:
+        raise ValueError("User not found")
+
+    ln_account = await db.ln_users.find_first(where={"ln_key": key})
+    if ln_account is None:
+        await db.ln_users.create(data={"ln_key": key, "user_id": user_id})
+        return user
+
+    if ln_account.user_id != user_id:
+        raise LightningProviderAlreadyLinkedError("Lightning key already linked to another user")
+
+    return user

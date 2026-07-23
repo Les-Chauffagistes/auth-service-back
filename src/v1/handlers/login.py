@@ -4,6 +4,7 @@ from aiohttp.web import json_response
 from authentication_types.models import User, ExchangeCodePayload, Status
 from prisma import Prisma
 
+from ..auth import resolve_authenticated_user_id
 from ..cookie import delete_cookies, set_cookie_and_redirect, ACCESS_TOKEN_COOKIE_NAME
 from ..jwt import (
     create_access_token,
@@ -165,4 +166,28 @@ async def complete_lightning_onboarding(request: Request):
         ),
         access_token,
         new_refresh_token,
+    )
+
+
+@routes.get("/providers")
+async def get_linked_providers(request: Request):
+    if not request.cookies.get(ACCESS_TOKEN_COOKIE_NAME):
+        return json_response({"error": "Missing token"}, status=401)
+
+    user_id = resolve_authenticated_user_id(request)
+    if user_id is None:
+        return json_response({"error": "Invalid token"}, status=401)
+
+    prisma: Prisma = request.app["prisma"]
+    has_discord = await prisma.discord_users.find_first(where={"user_id": user_id}) is not None
+    has_lightning = await prisma.ln_users.find_first(where={"user_id": user_id}) is not None
+    credentials = await prisma.password_users.find_first(where={"user_id": user_id})
+
+    return json_response(
+        {
+            "discord": has_discord,
+            "lightning": has_lightning,
+            "credentials": credentials is not None,
+            "username": credentials.username if credentials is not None else None,
+        }
     )
