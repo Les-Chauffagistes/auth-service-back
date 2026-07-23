@@ -34,7 +34,7 @@ jobs:
         run: prisma generate
 
       - name: Run tests
-        run: python -m pytest
+        run: python -m pytest --cov=src --cov-report=xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
