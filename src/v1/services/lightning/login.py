@@ -82,9 +82,7 @@ async def link_lightning_provider(db: Prisma, user_id: int, key: str):
     ln_account = await db.ln_users.find_first(where={"ln_key": key})
     if ln_account is None:
         await db.ln_users.create(data={"ln_key": key, "user_id": user_id})
-        return user
-
-    if ln_account.user_id != user_id:
+    elif ln_account.user_id != user_id:
         raise LightningProviderAlreadyLinkedError("Lightning key already linked to another user")
 
     return user

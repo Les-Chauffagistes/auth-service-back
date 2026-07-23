@@ -140,13 +140,12 @@ async def handle_link(db: Prisma, code: str, user_id: int):
                 "user_id": user_id,
             }
         )
-        return user
-
-    if discord_account.user_id != user_id:
+    elif discord_account.user_id != user_id:
         raise DiscordProviderAlreadyLinkedError("Discord account already linked to another user")
+    else:
+        await db.discord_users.update(
+            where={"id": discord_id},
+            data={"discord_name": discord_name},
+        )
 
-    await db.discord_users.update(
-        where={"id": discord_id},
-        data={"discord_name": discord_name},
-    )
     return user
