@@ -28,7 +28,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: "pip install --only-binary :all: -r requirements.txt"
+        run: "pip install --only-binary :all: --require-hashes -r requirements.txt"
 
       - name: Generate Prisma client
         run: prisma generate
