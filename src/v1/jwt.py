@@ -6,6 +6,7 @@ import jwt
 from prisma import Prisma
 
 from src.settings import settings
+from src.v1.services.db_utils import create_with_sequence_repair
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
@@ -55,12 +56,16 @@ async def create_refresh_token(db: Prisma, user_id: int) -> str:
     refresh_token = token_urlsafe(48)
     expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
-    await db.refresh_tokens.create(
-        data={
-            "token_hash": _hash_refresh_token(refresh_token),
-            "user_id": user_id,
-            "expires_at": expires_at,
-        }
+    await create_with_sequence_repair(
+        db,
+        "refresh_tokens",
+        lambda: db.refresh_tokens.create(
+            data={
+                "token_hash": _hash_refresh_token(refresh_token),
+                "user_id": user_id,
+                "expires_at": expires_at,
+            }
+        ),
     )
 
     return refresh_token
