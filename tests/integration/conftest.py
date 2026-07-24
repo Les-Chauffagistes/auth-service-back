@@ -53,22 +53,88 @@ def _apply_prisma_schema(database_url: str) -> None:
         raise RuntimeError(f"Unable to apply the Prisma test schema:\n{details}")
 
 
+def _run_docker_command(*args: str) -> str:
+    try:
+        result = subprocess.run(
+            ["docker", *args],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return f"$ docker {' '.join(args)}\nexit=n/a\ndocker executable was not found.\n"
+
+    output = "\n".join(
+        part for part in [result.stdout.strip(), result.stderr.strip()] if part
+    )
+    return f"$ docker {' '.join(args)}\nexit={result.returncode}\n{output}\n"
+
+
+def _extract_testcontainer_id(postgres: PostgresContainer) -> str | None:
+    container = getattr(postgres, "_container", None)
+    if container is None:
+        return None
+
+    container_id = getattr(container, "id", None)
+    if container_id is None:
+        return None
+
+    return str(container_id)
+
+
+def _collect_startup_diagnostics(postgres: PostgresContainer) -> str:
+    container_id = _extract_testcontainer_id(postgres)
+    diagnostics = [
+        "Postgres Testcontainers startup diagnostics:",
+        f"image={POSTGRES_IMAGE}",
+        _run_docker_command("ps", "-a", "--no-trunc"),
+    ]
+
+    if container_id is not None:
+        diagnostics.extend(
+            [
+                f"container_id={container_id}",
+                _run_docker_command("inspect", container_id),
+                _run_docker_command("logs", container_id),
+            ]
+        )
+    else:
+        diagnostics.append("container_id=<unavailable>")
+
+    return "\n".join(diagnostics)
+
+
 @pytest.fixture(scope="session")
 def postgres_database_url():
     previous_database_url = os.environ.get("DATABASE_URL")
+    postgres = PostgresContainer(
+        POSTGRES_IMAGE,
+        username="postgres",
+        password="postgres",
+        dbname="auth_test",
+        driver=None,
+    )
+    started = False
+
     try:
-        with PostgresContainer(
-            POSTGRES_IMAGE,
-            username="postgres",
-            password="postgres",
-            dbname="auth_test",
-            driver=None,
-        ) as postgres:
-            database_url = postgres.get_connection_url()
-            os.environ["DATABASE_URL"] = database_url
-            _apply_prisma_schema(database_url)
-            yield database_url
+        try:
+            postgres.start()
+            started = True
+        except Exception as exc:
+            diagnostics = _collect_startup_diagnostics(postgres)
+            raise RuntimeError(
+                "Unable to start the Postgres test container.\n"
+                f"{diagnostics}"
+            ) from exc
+
+        database_url = postgres.get_connection_url()
+        os.environ["DATABASE_URL"] = database_url
+        _apply_prisma_schema(database_url)
+        yield database_url
     finally:
+        if started:
+            postgres.stop()
+
         if previous_database_url is None:
             os.environ.pop("DATABASE_URL", None)
         else:
