@@ -1,6 +1,7 @@
 from prisma import Prisma
 
 from ...excpetions import UsernameAlreadyInUseException
+from ..db_utils import create_with_sequence_repair
 from .utils import check_account_exists, hash_password
 
 
@@ -14,12 +15,18 @@ async def create_username_password_account(prisma: Prisma, username: str, passwo
 
     hashed = await hash_password(password)
 
-    user = await prisma.users.create(data={"pseudo": username})
-    await prisma.password_users.create(data={
-        "username": username,
-        "password": hashed,
-        "user_id": user.id,
-    })
+    user = await create_with_sequence_repair(
+        prisma, "users", lambda: prisma.users.create(data={"pseudo": username})
+    )
+    await create_with_sequence_repair(
+        prisma,
+        "password_users",
+        lambda: prisma.password_users.create(data={
+            "username": username,
+            "password": hashed,
+            "user_id": user.id,
+        }),
+    )
 
     return user
 
@@ -37,11 +44,15 @@ async def link_username_password_account(prisma: Prisma, user_id: int, username:
         raise CredentialsProviderAlreadyLinkedError("Credentials provider already linked")
 
     hashed = await hash_password(password)
-    await prisma.password_users.create(
-        data={
-            "username": username,
-            "password": hashed,
-            "user_id": user_id,
-        }
+    await create_with_sequence_repair(
+        prisma,
+        "password_users",
+        lambda: prisma.password_users.create(
+            data={
+                "username": username,
+                "password": hashed,
+                "user_id": user_id,
+            }
+        ),
     )
     return user

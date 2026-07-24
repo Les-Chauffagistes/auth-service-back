@@ -11,26 +11,27 @@ async def error_handler(request: Request, handler: Callable[[Request], Awaitable
     method = request.method
     match method:
         case "GET":
-            line = log.get(request.path)
-        
+            log_request = log.get
+
         case "POST":
-            line = log.post(request.path)
-        
+            log_request = log.post
+
         case "DELETE":
-            line = log.delete(request.path)
-        
+            log_request = log.delete
+
         case _:
-            line = log.info(request.method, request.path)
-    
-    assert line
+            log_request = lambda *content: log.info(method, *content)
+
+    status = None
     try:
         response = await handler(request)
-        line.add_text("HTTP", response.status)
-        line.edit_print()
+        status = response.status
         return response
 
     except HTTPException as e:
-        line.add_text("HTTP", e.status_code)
-        line.edit_print()
+        status = e.status_code
         log.error("Request error")
         raise
+
+    finally:
+        log_request(request.path, status if status is not None else "ERROR")
