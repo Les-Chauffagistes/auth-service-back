@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from aiohttp import ClientSession
 from prisma import Prisma
 
+from ..db_utils import create_with_sequence_repair
 from ....settings import settings
 
 DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
@@ -95,7 +96,9 @@ async def handle_login(db: Prisma, code: str):
     )
 
     if discord_account is None:
-        user = await db.users.create(data={"pseudo": discord_name})
+        user = await create_with_sequence_repair(
+            db, "users", lambda: db.users.create(data={"pseudo": discord_name})
+        )
         discord_account = await db.discord_users.create(
             data={
                 "id": discord_id,
