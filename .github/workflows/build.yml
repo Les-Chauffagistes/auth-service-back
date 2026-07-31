@@ -9,9 +9,53 @@ on:
  
 jobs:
   test:
-    uses: Les-Chauffagistes/deploy/.github/workflows/test.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
-    with:
-      python-version: '3.12'
+    name: Python test suite
+    runs-on: [self-hosted, worker]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python via uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: "**/requirements.txt"
+
+      - name: Ensure Docker access (for Testcontainers)
+        run: docker info > /dev/null
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Generate Prisma client
+        if: ${{ hashFiles('**/schema.prisma') != '' }}
+        run: uv run prisma generate
+
+      - name: Run pytest
+        run: uv run pytest
+
+      - name: Dump Docker diagnostics on pytest failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: |
+          echo "=== docker version ==="
+          docker version || true
+          echo "=== docker info ==="
+          docker info || true
+          echo "=== docker ps -a ==="
+          docker ps -a || true
+          echo "=== Docker containers with testcontainers labels ==="
+          ids="$(docker ps -aq --filter 'label=org.testcontainers=true' || true)"
+          if [ -n "$ids" ]; then
+            docker inspect $ids || true
+            for id in $ids; do
+              echo "=== logs for $id ==="
+              docker logs "$id" || true
+            done
+          fi
 
   build-push:
     if: github.event_name == 'push'

@@ -14,6 +14,7 @@ from ..jwt import (
     decode_onboarding_token,
     rotate_refresh_token,
 )
+from ..services.db_utils import create_with_sequence_repair
 from ..services.lightning.exchange import consume_exchange_code
 from ..app import routes
 
@@ -151,8 +152,12 @@ async def complete_lightning_onboarding(request: Request):
     if existing_ln is not None:
         return json_response({"error": "Key already registered"}, status=409)
 
-    user = await prisma.users.create(data={"pseudo": pseudo})
-    await prisma.ln_users.create(data={"ln_key": ln_key, "user_id": user.id})
+    user = await create_with_sequence_repair(
+        prisma, "users", lambda: prisma.users.create(data={"pseudo": pseudo})
+    )
+    await create_with_sequence_repair(
+        prisma, "ln_users", lambda: prisma.ln_users.create(data={"ln_key": ln_key, "user_id": user.id})
+    )
 
     access_token = create_access_token(user.id, user.pseudo)
     new_refresh_token = await create_refresh_token(prisma, user.id)

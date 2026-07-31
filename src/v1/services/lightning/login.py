@@ -3,6 +3,7 @@ from typing import Literal, Union
 from prisma import Prisma
 from prisma.models import users
 from src.settings import settings
+from ..db_utils import create_with_sequence_repair
 from .lnurl_codec import encode_lnurl
 from authentication_types.models import LNChallenge
 from init import log
@@ -81,7 +82,9 @@ async def link_lightning_provider(db: Prisma, user_id: int, key: str):
 
     ln_account = await db.ln_users.find_first(where={"ln_key": key})
     if ln_account is None:
-        await db.ln_users.create(data={"ln_key": key, "user_id": user_id})
+        await create_with_sequence_repair(
+            db, "ln_users", lambda: db.ln_users.create(data={"ln_key": key, "user_id": user_id})
+        )
     elif ln_account.user_id != user_id:
         raise LightningProviderAlreadyLinkedError("Lightning key already linked to another user")
 
