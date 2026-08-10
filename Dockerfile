@@ -56,4 +56,4 @@ CMD ["sh", "-c", "\
   export DISCORD_CLIENT_SECRET=$(cat /run/secrets/discord_client_secret) && \
   export JWT_SECRET=$(cat /run/secrets/jwt_secret) && \
   until prisma migrate deploy; do echo 'DB pas prête, retry...'; sleep 2; done && \
-  python main.py"]
+  exec python main.py"]
