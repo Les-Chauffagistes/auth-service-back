@@ -20,24 +20,16 @@ _logger.level("INFO", color="<bold><green>")
 _logger.level("ERROR", color="<bold><fg 166>")
 _logger.level("DEBUG", color="<bold><fg 63>")
 
-_REQUEST_LEVELS = ("GET", "POST", "DELETE")
 _TIME_FORMAT = "DD/MM/YYYY à HH:mm:ss"
-
-
-def _console_format(record: dict) -> str:
-    if record["level"].name in _REQUEST_LEVELS:
-        return f"<fg 8>{{time:{_TIME_FORMAT}}} </fg 8><level>[{{level.name}}]</level> {{message}}\n"
-    # {exception} doit être explicite ici : loguru ne l'ajoute automatiquement
-    # que pour les formats "chaîne", pas pour les formats "fonction" comme celui-ci.
-    return (
-        f"<fg 8>{{time:{_TIME_FORMAT}}} </fg 8><level>[{{level.name}}]</level> "
-        "<light-cyan>{name}:{line} {function}</light-cyan> {message}\n{exception}"
-    )
-
 
 _FILE_FORMAT = f"{{time:{_TIME_FORMAT}}}[{{level.name}}] {{name}}:{{line}} {{message}}"
 
-_logger.add(sys.stdout, format=_console_format, colorize=True, backtrace=False, diagnose=False)
+# JSON sur stdout : un événement = une ligne, même avec une stack trace multi-lignes
+# (elle atterrit dans le champ "record.exception" au lieu d'exploser en N lignes de
+# texte). Avant ce changement, le ruler Loki (voir deploy/stacks/core/loki.rules.yaml)
+# comptait chaque ligne d'une trace comme une occurrence "error" distincte et
+# déclenchait HighErrorLogRate sur une seule exception.
+_logger.add(sys.stdout, serialize=True, backtrace=False, diagnose=False)
 
 
 class Logger:
