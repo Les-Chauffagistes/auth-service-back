@@ -25,6 +25,9 @@ jobs:
       - name: Ensure Docker access (for Testcontainers)
         run: docker info > /dev/null
 
+      - name: Configure private pip index (chauff-cmn)
+        run: echo "UV_EXTRA_INDEX_URL=http://${{ secrets.REGISTRY_USER }}:${{ secrets.PYPISERVER_PASSWORD }}@10.10.0.3:8081/simple/" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: |
           uv venv
@@ -60,10 +63,12 @@ jobs:
   build-push:
     if: github.event_name == 'push'
     needs: test
-    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@2e32eae14ae1affc59d3b271735fb5fb0e7e4fb3
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@f2251700b5b235a3965d6bb793a63e63cd43e673
     with:
       service-name: auth-service-back
     secrets:
       REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
       REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      VERDACCIO_PASSWORD: ${{ secrets.VERDACCIO_PASSWORD }}
+      PYPISERVER_PASSWORD: ${{ secrets.PYPISERVER_PASSWORD }}
       ORG_PAT: ${{ secrets.ORG_PAT }}

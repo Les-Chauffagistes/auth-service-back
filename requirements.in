@@ -1,7 +1,7 @@
 aiohttp
 aiohttp_cors
 aiofiles
-loguru
+chauff-cmn
 python-dotenv
 prisma
 asyncpg

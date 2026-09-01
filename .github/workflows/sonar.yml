@@ -15,28 +15,34 @@ concurrency:
 jobs:
   sonarqube:
     name: SonarQube
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, worker]
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-          cache: pip
+          enable-cache: true
 
       - name: Install dependencies
-        run: "pip install --only-binary :all: --require-hashes -r requirements.txt"
+        run: |
+          uv venv
+          uv pip install --only-binary :all: --require-hashes -r requirements.txt
+        env:
+          UV_EXTRA_INDEX_URL: http://${{ secrets.REGISTRY_USER }}:${{ secrets.PYPISERVER_PASSWORD }}@10.10.0.3:8081/simple/
 
       - name: Generate Prisma client
-        run: prisma generate
+        run: uv run prisma generate
 
       - name: Run tests
-        run: python -m pytest --cov=src --cov-report=xml
+        run: uv run pytest --cov=src --cov-report=xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        with:
+          skipSignatureVerification: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
