@@ -1,7 +1,8 @@
 import jwt
 from aiohttp.web_request import Request
 from aiohttp.web import json_response
-from authentication_types.models import User, ExchangeCodePayload, Status
+from chauff_cmn.models import User, ExchangeCodePayload, ExchangeCodeStatus
+
 from prisma import Prisma
 
 from ..auth import resolve_authenticated_user_id
@@ -98,7 +99,7 @@ async def exchange(request: Request):
     if payload["type"] == "onboarding":
         session_token = create_onboarding_token(payload["ln_key"])
         return json_response(ExchangeCodePayload(
-            status=Status.onboarding,
+            status=ExchangeCodeStatus.onboarding,
             session_token=session_token
         ).model_dump(mode="json"))
 
@@ -113,7 +114,7 @@ async def exchange(request: Request):
     return set_cookie_and_redirect(
         json_response(
             ExchangeCodePayload(
-                status=Status.logged_in,
+                status=ExchangeCodeStatus.logged_in,
                 user=User(user_id=str(user.id), pseudo=user.pseudo),
             ).model_dump(mode="json")
         ),
@@ -165,7 +166,7 @@ async def complete_lightning_onboarding(request: Request):
     return set_cookie_and_redirect(
         json_response(
             ExchangeCodePayload(
-                status=Status.logged_in,
+                status=ExchangeCodeStatus.logged_in,
                 user=User(user_id=str(user.id), pseudo=user.pseudo),
             ).model_dump(mode="json")
         ),

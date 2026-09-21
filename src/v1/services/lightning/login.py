@@ -5,7 +5,7 @@ from prisma.models import users
 from src.settings import settings
 from ..db_utils import create_with_sequence_repair
 from .lnurl_codec import encode_lnurl
-from authentication_types.models import LNChallenge
+from chauff_cmn.models import LNChallenge
 from init import log
 
 

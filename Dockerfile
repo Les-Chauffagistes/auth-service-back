@@ -3,7 +3,11 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Cache Prisma partagé (query engine + CLI Node), chemin fixe et indépendant du HOME
+# PRISMA_BINARY_CACHE_DIR ne couvre pas le binaire Node de nodeenv (variable séparée
+# côté prisma-client-py) : sans PRISMA_NODEENV_CACHE_DIR, nodeenv retombe sur
+# ~/.cache/prisma-python/nodeenv et se réinstalle (~450M) à chaque démarrage du conteneur.
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev \
@@ -23,8 +27,9 @@ FROM python:3.12-slim AS runtime
 
 # stdout non bufferisé : sinon les logs de l'app restent coincés sous Swarm (pas de TTY)
 ENV PYTHONUNBUFFERED=1
-# Même chemin de cache qu'au build : Prisma trouve les binaires bakés au lieu de les réinstaller au runtime
+# Mêmes chemins de cache qu'au build : Prisma trouve les binaires bakés au lieu de les réinstaller au runtime
 ENV PRISMA_BINARY_CACHE_DIR=/opt/prisma-cache
+ENV PRISMA_NODEENV_CACHE_DIR=/opt/prisma-cache/nodeenv
 
 RUN groupadd -r appuser && useradd -r -g appuser -d /home/appuser -m appuser
 
@@ -54,8 +59,8 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
 
 CMD ["sh", "-c", "\
   export DB_PASSWORD=$(cat /run/secrets/db_password) && \
-  export DATABASE_URL=postgresql://auth:${DB_PASSWORD}@${DB_HOST:-auth-service_db}:5432/auth && \
+  export DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME} && \
   export DISCORD_CLIENT_SECRET=$(cat /run/secrets/discord_client_secret) && \
   export JWT_SECRET=$(cat /run/secrets/jwt_secret) && \
-  until prisma migrate deploy; do echo 'DB pas prête, retry...'; sleep 2; done && \
+  until prisma migrate deploy; do echo 'DB not ready, retry...'; sleep 2; done && \
   exec python main.py"]

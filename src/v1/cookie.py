@@ -14,7 +14,7 @@ def set_cookie_and_redirect(response: Response, access_token: str, refresh_token
         ACCESS_TOKEN_COOKIE_NAME,
         access_token,
         httponly=True,
-        secure=True,
+        secure=settings.environment != "development",
         samesite="None",
         domain=DOMAIN_NAME,
         path="/"
@@ -23,7 +23,7 @@ def set_cookie_and_redirect(response: Response, access_token: str, refresh_token
         REFRESH_TOKEN_COOKIE_NAME,
         refresh_token,
         httponly=True,
-        secure=True,
+        secure=settings.environment != "development",
         samesite="None",
         domain=DOMAIN_NAME,
         path="/"
