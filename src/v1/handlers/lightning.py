@@ -1,7 +1,7 @@
 from aiohttp import web
 from aiohttp.web_request import Request
 from aiohttp.web import json_response
-from aiohttp import WSMsgType
+from aiohttp import WSMsgType, WSCloseCode
 from prisma import Prisma
 from prisma.enums import lnurl_auth_status
 from chauff_cmn.models import LNCallbackSuccessPayload
@@ -18,6 +18,15 @@ from ..services.lightning.exchange import create_exchange_code, create_onboardin
 from ..app import routes
 
 _ws_registry: dict[str, web.WebSocketResponse] = {}
+
+
+async def close_lightning_websockets(app: web.Application) -> None:
+    """Ferme les WebSockets Lightning ouvertes pour ne pas bloquer l'arret gracieux
+    du serveur (aiohttp attend sinon jusqu'a shutdown_timeout que ces connexions
+    se terminent d'elles-memes, ce qui depasse le delai de grace de Docker)."""
+    for ws in list(_ws_registry.values()):
+        if not ws.closed:
+            await ws.close(code=WSCloseCode.GOING_AWAY, message=b"Server shutdown")
 
 
 @routes.get("/lightning/challenge")

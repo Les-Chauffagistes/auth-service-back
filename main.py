@@ -22,6 +22,9 @@ if __name__ == "__main__":
     from src import v1, health
 
     from src.v1.app import routes as v1_routes
+    from src.v1.handlers.lightning import close_lightning_websockets
+
     app.add_routes(routes)
     app.add_routes(v1_routes)
+    app.on_shutdown.append(close_lightning_websockets)
     main()
