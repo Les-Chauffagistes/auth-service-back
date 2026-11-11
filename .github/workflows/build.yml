@@ -17,7 +17,7 @@ jobs:
   build-push:
     if: github.event_name == 'push'
     needs: test
-    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@f2251700b5b235a3965d6bb793a63e63cd43e673
+    uses: Les-Chauffagistes/deploy/.github/workflows/build.yml@be3b94140650519f067162409927358ea8b0723f
     with:
       service-name: auth-service-back
     secrets:
