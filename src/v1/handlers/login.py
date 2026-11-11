@@ -12,10 +12,8 @@ from ..jwt import (
     create_onboarding_token,
     create_refresh_token,
     decode_access_token,
-    decode_onboarding_token,
     rotate_refresh_token,
 )
-from ..services.db_utils import create_with_sequence_repair
 from ..services.lightning.exchange import consume_exchange_code
 from ..app import routes
 
@@ -123,56 +121,8 @@ async def exchange(request: Request):
     )
 
 @routes.post("/lightning/complete")
-async def complete_lightning_onboarding(request: Request):
-    try:
-        body: dict = await request.json()
-    except ValueError:
-        return json_response({"error": "Invalid JSON"}, status=400)
-
-    session_token = body.get("session_token")
-    pseudo = body.get("pseudo")
-
-    if not session_token or not pseudo:
-        return json_response({"error": "Missing session_token or pseudo"}, status=400)
-
-    try:
-        token_payload = decode_onboarding_token(session_token)
-    except jwt.ExpiredSignatureError:
-        return json_response({"error": "Session expired"}, status=401)
-    except jwt.InvalidTokenError:
-        return json_response({"error": "Invalid session token"}, status=401)
-
-    ln_key = token_payload["ln_key"]
-    prisma: Prisma = request.app["prisma"]
-
-    existing_pseudo = await prisma.users.find_first(where={"pseudo": pseudo})
-    if existing_pseudo is not None:
-        return json_response({"error": "Pseudo already taken"}, status=409)
-
-    existing_ln = await prisma.ln_users.find_first(where={"ln_key": ln_key})
-    if existing_ln is not None:
-        return json_response({"error": "Key already registered"}, status=409)
-
-    user = await create_with_sequence_repair(
-        prisma, "users", lambda: prisma.users.create(data={"pseudo": pseudo})
-    )
-    await create_with_sequence_repair(
-        prisma, "ln_users", lambda: prisma.ln_users.create(data={"ln_key": ln_key, "user_id": user.id})
-    )
-
-    access_token = create_access_token(user.id, user.pseudo)
-    new_refresh_token = await create_refresh_token(prisma, user.id)
-
-    return set_cookie_and_redirect(
-        json_response(
-            ExchangeCodePayload(
-                status=ExchangeCodeStatus.logged_in,
-                user=User(user_id=str(user.id), pseudo=user.pseudo),
-            ).model_dump(mode="json")
-        ),
-        access_token,
-        new_refresh_token,
-    )
+async def complete_lightning_onboarding(_: Request):
+    return json_response({"error": "Lightning signups are disabled"}, status=403)
 
 
 @routes.get("/providers")

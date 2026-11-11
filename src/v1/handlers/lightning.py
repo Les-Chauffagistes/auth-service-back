@@ -14,10 +14,12 @@ from ..services.lightning.login import (
     LightningProviderAlreadyLinkedError,
     verify_signature,
 )
-from ..services.lightning.exchange import create_exchange_code, create_onboarding_code
+from ..services.lightning.exchange import create_exchange_code
 from ..app import routes
 
 _ws_registry: dict[str, web.WebSocketResponse] = {}
+
+SIGNUP_DISABLED_REASON = "Lightning signups are disabled"
 
 
 async def close_lightning_websockets(app: web.Application) -> None:
@@ -113,7 +115,19 @@ async def _resolve_verify_code(prisma: Prisma, challenge, key: str) -> web.Respo
     auth_result = await authenticate_with_lightning(prisma, key)
     if auth_result[0] == "login":
         return create_exchange_code(auth_result[1].id)
-    return create_onboarding_code(auth_result[1])
+    return json_response({"status": "ERROR", "reason": SIGNUP_DISABLED_REASON}, status=403)
+
+
+async def _reject_signup(prisma: Prisma, k1: str) -> None:
+    """Burns the challenge and tells the waiting browser that signup is closed."""
+    await prisma.lnurl_auth.update(
+        where={"k1": k1},
+        data={"status": lnurl_auth_status.done},
+    )
+    ws = _ws_registry.pop(k1, None)
+    if ws is not None and not ws.closed:
+        await ws.send_json({"status": "ERROR", "reason": SIGNUP_DISABLED_REASON})
+        await ws.close()
 
 
 @routes.get("/lightning/verify")
@@ -143,6 +157,8 @@ async def verify_challenge(request: Request):
 
     code_or_error = await _resolve_verify_code(prisma, challenge, key)
     if isinstance(code_or_error, web.Response):
+        if code_or_error.status == 403:
+            await _reject_signup(prisma, k1)
         return code_or_error
     code = code_or_error
 

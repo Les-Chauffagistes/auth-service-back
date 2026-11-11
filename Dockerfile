@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
@@ -19,11 +19,12 @@ RUN --mount=type=secret,id=pipindex \
     pip install --no-cache-dir --only-binary :all: --require-hashes --trusted-host 10.10.0.3 -r requirements.txt
 
 COPY prisma ./prisma
+RUN python -m nodeenv --node=22.11.0 /opt/prisma-cache/nodeenv
 # Génère le client ET bake le query engine + la CLI Node dans le cache partagé
 RUN prisma generate
 
 
-FROM python:3.12-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 # stdout non bufferisé : sinon les logs de l'app restent coincés sous Swarm (pas de TTY)
 ENV PYTHONUNBUFFERED=1
@@ -39,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl libatomic1 libpq5  \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /opt/prisma-cache /opt/prisma-cache
 COPY --from=builder /app/prisma ./prisma
