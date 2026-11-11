@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      secrets:
+        - pipindex
     ports:
       - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     env_file:
@@ -12,7 +15,7 @@ services:
         condition: service_healthy
 
   db:
-    image: postgres:18.1-alpine3.23
+    image: postgres:16-alpine
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-auth}
@@ -28,3 +31,7 @@ services:
 
 volumes:
   pgdata:
+
+secrets:
+  pipindex:
+    environment: PIP_EXTRA_INDEX_URL
